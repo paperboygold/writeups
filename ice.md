@@ -62,7 +62,7 @@ Shellcodes: No Results
 ```
 
 The 'Icecast 2.0.1 (Win32) - Remote Code Execution' exploits are the  most interesting two options here. A little bit of Googling leads us to  the following webpage: https://www.exploit-db.com/exploits/568
-This relates to the following CVE: CVE-2004-1561
+This relates to the this CVE: **CVE-2004-1561**
 
 ## Initial Exploitation
 
