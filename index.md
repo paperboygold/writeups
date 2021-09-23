@@ -2,5 +2,8 @@
 
 This is a webpage that links to my writeups for TryHackMe, HackTheBox and Offensive Security's Proving Grounds.
 
-## Pages
+## TryHackMe Writeups
+
+- [Ice](./ice.md)
+
 
